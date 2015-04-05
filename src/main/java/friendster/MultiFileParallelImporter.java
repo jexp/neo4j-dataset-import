@@ -62,18 +62,21 @@ public class MultiFileParallelImporter {
                     public InputIterator<InputRelationship> iterator() {
                         return new InputIterator<InputRelationship>() {
                             Iterator<InputRelationship> current = rels.hasNext() ? rels.next().other().iterator() : null;
-                            public boolean hasNext() { return current != null && current.hasNext() || rels.hasNext(); }
+                            public boolean hasNext() {
+                                if (current != null && current.hasNext()) return true;
+                                if (rels.hasNext()) {
+                                    current = rels.next().other().iterator();
+                                    return hasNext();
+                                }
+                                return false;
+                            }
                             public InputRelationship next() {
                                 return nextRelationship();
                             }
 
                             private InputRelationship nextRelationship() {
-                                if (current==null) throw new IllegalStateException("next called despite hasNext was false");
-                                if (current.hasNext()) return current.next();
-                                else {
-                                    current = rels.next().other().iterator();
-                                    return nextRelationship();
-                                }
+                                if (current != null && current.hasNext()) return current.next();
+                                throw new IllegalStateException("next called despite hasNext was false");
                             }
 
                             public void remove() { }
