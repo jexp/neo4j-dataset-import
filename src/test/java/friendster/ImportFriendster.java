@@ -68,7 +68,7 @@ public class ImportFriendster {
         if (fileOrDirectory.isDirectory()) {
             files = fileOrDirectory.listFiles(new FilenameFilter() {
                 public boolean accept(File dir, String name) {
-                    return name.matches("friends-\\d+_+\\.txt\\.bz2");
+                    return name.matches("friends-\\d+_+\\.txt\\.(bz2|gz)");
                 }
             });
         } else {
