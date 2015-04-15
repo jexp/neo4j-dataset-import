@@ -37,7 +37,7 @@ public class ImportFriendster {
         File[] files = getDataFiles(args[1]);
 
         final MultiFileParallelImporter importFriendster = new MultiFileParallelImporter(store);
-        IdMapper idMapper = IdMappers.longs(NumberArrayFactory.AUTO);
+        IdMapper idMapper = IdMappers.actual();//.longs(NumberArrayFactory.AUTO);
 
         MultiFileParallelImporter.Generator generator = new MultiFileParallelImporter.Generator() {
 
