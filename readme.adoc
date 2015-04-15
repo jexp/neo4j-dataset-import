@@ -1,0 +1,75 @@
+== Parallel Importer for Line-Based Input Files
+
+Imagine you have a bunch of line-based input files as csv.
+
+But they are not the in the CSV format that the new fast http://neo4j.com/docs/stable/import-tool.html[Neo4j-Import tool] can work with.
+
+It's your lucky day!
+
+I wanted to import the https://archive.org/details/friendster-dataset-201107[Friendster dataset] with 125M nodes and 2.5BN relationships.
+
+Which should be pretty straigtforward but their format is rather an edge-list than the plain, denormalized CSV we usually work with.
+
+[source,csv]
+----
+1:private
+2:notdefined
+3:6,7,8,...
+4:23,5,5,66
+----
+
+So I wrote this little tool to help with it. It uses the same APIs for inserting into Neo4j as the `neo4j-import` tool,
+but offers some more flexibility for providing the data.
+
+* It works on multiple files (optionally compressed with bzip2 or gzip).
+* You provide two functions, to convert a line into a node or into multiple relationships.
+* Each file is read, each line is passed to both functions and the results imported.
+
+The import code for Friendster looks like this and runs on my linux box in: 45 minutes (only because my file-reading code is so slow).
+In that time it reads 11GB compressed csv data and creates a Neo4j datastore of 89GB (2GB nodes, 82GB relationships, 5G properties).
+
+[source,java]
+----
+public class ImportFriendster {
+    public static final String[] LABELS = new String[]{"Person"};
+    public static final String REL_TYPE = "FRIEND_OF";
+    public static final Object[] NO_PROPS = new Object[0];
+
+
+    public static void main(String[] args) throws IOException {
+        File store = new File(args[0]);
+        FileUtils.deleteRecursively(store);
+
+        File[] files = getDataFiles(args[1]);
+
+        final MultiFileParallelImporter importFriendster = new MultiFileParallelImporter(store);
+
+        IdMapper idMapper = IdMappers.actual();//.longs(NumberArrayFactory.AUTO); or .strings(NumberArrayFactory.AUTO);
+
+        MultiFileParallelImporter.Generator generator = new MultiFileParallelImporter.Generator() {
+
+            public InputNode createNode(String line, long position, String fileName, int lineNo) {
+                int idx = line.indexOf(':');
+                long nodeId = parseLong(line.substring(0, idx));
+                return new InputNode(fileName, lineNo, position, nodeId, new Object[]{"id", nodeId}, null, LABELS, null);
+            }
+
+            public Iterable<InputRelationship> createRelationships(String line, long position, String fileName, int lineNo) {
+                int idx = line.indexOf(':');
+                long nodeId = parseLong(line.substring(0, idx));
+                String[] ids = line.substring(idx + 1).split(",");
+                List<InputRelationship> rels =new ArrayList<>(ids.length);
+                for (String id : ids) {
+                    if (id.equals("notfound") || id.equals("private") || id.trim().isEmpty()) continue;
+                    rels.add(new InputRelationship(fileName, lineNo, position, NO_PROPS, null, nodeId, parseLong(id), REL_TYPE, null));
+                }
+                return rels;
+            }
+        };
+        importFriendster.run(files, idMapper, 0, generator);
+    }
+
+    // .... getDataFiles left off ...
+}
+----
+
