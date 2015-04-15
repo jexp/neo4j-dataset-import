@@ -16,6 +16,8 @@ import org.neo4j.unsafe.impl.batchimport.staging.ExecutionMonitors;
 
 import java.io.*;
 import java.util.Iterator;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.ZipInputStream;
 
 /**
  * @author mh
@@ -193,14 +195,24 @@ public class MultiFileParallelImporter {
                 if (reader != null) reader.close();
                 if (currentName!=null) System.out.println("\nEnd  File " + currentName);
                 if (++currentFile >= files.length) return false;
-                reader = new BufferedReader(new InputStreamReader(new BZip2CompressorInputStream(new BufferedInputStream(new FileInputStream(files[currentFile]), MEGA_BYTE))),MEGA_BYTE);
-                currentName = files[currentFile].getName();
+                File currentFile = files[this.currentFile];
+                BufferedInputStream bis = new BufferedInputStream(new FileInputStream(currentFile), MEGA_BYTE);
+                InputStream stream = decompressedStream(bis, currentFile.getName());
+                reader = new BufferedReader(new InputStreamReader(stream),MEGA_BYTE);
+                currentName = currentFile.getName();
                 System.out.println("\nStart File "+currentName);
                 lineNo = 0;
                 return true;
             } catch (IOException ioe) {
                 throw new RuntimeException(ioe);
             }
+        }
+
+        private InputStream decompressedStream(InputStream is, String fileName) throws IOException {
+            if (fileName.endsWith(".bz2")) return new BZip2CompressorInputStream(is);
+            if (fileName.endsWith(".zip")) return new ZipInputStream(is);
+            if (fileName.endsWith(".gz")) return new GZIPInputStream(is);
+            return is;
         }
 
         public void remove() { }
