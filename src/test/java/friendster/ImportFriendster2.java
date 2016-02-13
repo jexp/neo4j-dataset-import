@@ -3,7 +3,9 @@ package friendster;
 import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream;
 import org.neo4j.helpers.Pair;
 import org.neo4j.io.fs.FileUtils;
-import org.neo4j.kernel.logging.SystemOutLogging;
+import org.neo4j.kernel.impl.logging.LogService;
+import org.neo4j.kernel.impl.logging.SimpleLogService;
+import org.neo4j.logging.FormattedLogProvider;
 import org.neo4j.unsafe.impl.batchimport.Configuration;
 import org.neo4j.unsafe.impl.batchimport.InputIterable;
 import org.neo4j.unsafe.impl.batchimport.InputIterator;
@@ -17,9 +19,9 @@ import org.neo4j.unsafe.impl.batchimport.input.*;
 import org.neo4j.unsafe.impl.batchimport.staging.ExecutionMonitors;
 
 import java.io.*;
-import java.nio.channels.FileChannel;
-import java.nio.file.*;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 
 /**
  * @author mh
@@ -56,7 +58,7 @@ public class ImportFriendster2 {
     }
 
     private void run(final File[] files) throws IOException {
-        ParallelBatchImporter importer = new ParallelBatchImporter(store.getAbsolutePath(), Configuration.DEFAULT, new SystemOutLogging(), ExecutionMonitors.defaultVisible());
+        ParallelBatchImporter importer = new ParallelBatchImporter(store, Configuration.DEFAULT, createLogging(), ExecutionMonitors.defaultVisible());
         importer.doImport(new Input() {
             public InputIterable<InputNode> nodes() {
                 final InputFileIterator nodes = new InputFileIterator(files,true);
@@ -132,10 +134,16 @@ public class ImportFriendster2 {
             }
 
             @Override
-            public Collector<InputRelationship> badRelationshipsCollector(OutputStream out) {
-                return Collectors.badRelationshipsCollector(System.err,0);
+            public Collector badCollector() {
+                return Collectors.badCollector(System.err,0);
             }
         });
+    }
+
+    protected LogService createLogging() {
+        return new SimpleLogService(
+                FormattedLogProvider.toOutputStream(System.err),
+                FormattedLogProvider.toOutputStream(System.err));
     }
 
     private static class InputFileIterator implements Iterator<Pair<InputNode,List<InputRelationship>>> {

@@ -1,7 +1,6 @@
 package friendster;
 
 import org.neo4j.io.fs.FileUtils;
-import org.neo4j.unsafe.impl.batchimport.cache.NumberArrayFactory;
 import org.neo4j.unsafe.impl.batchimport.cache.idmapping.IdMapper;
 import org.neo4j.unsafe.impl.batchimport.cache.idmapping.IdMappers;
 import org.neo4j.unsafe.impl.batchimport.input.InputNode;
@@ -39,7 +38,7 @@ public class ImportFriendster {
         final MultiFileParallelImporter importFriendster = new MultiFileParallelImporter(store);
         IdMapper idMapper = IdMappers.actual();//.longs(NumberArrayFactory.AUTO);
 
-        MultiFileParallelImporter.Generator generator = new MultiFileParallelImporter.Generator() {
+        Generator generator = new Generator() {
 
             public InputNode createNode(String line, long position, String fileName, int lineNo) {
                 int idx = line.indexOf(':');
@@ -59,7 +58,9 @@ public class ImportFriendster {
                 return rels;
             }
         };
+        long start = System.currentTimeMillis();
         importFriendster.run(files, idMapper, 0, generator);
+        System.err.println("Total time for importing "+files.length+" files: "+(System.currentTimeMillis() - start)/1000+" seconds.");
     }
 
     private static File[] getDataFiles(String arg) {

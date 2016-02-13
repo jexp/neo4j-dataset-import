@@ -14,27 +14,28 @@ import org.neo4j.unsafe.impl.batchimport.input.*;
 import org.neo4j.unsafe.impl.batchimport.staging.ExecutionMonitor;
 import org.neo4j.unsafe.impl.batchimport.staging.ExecutionMonitors;
 
-import java.io.*;
+import java.io.File;
+import java.io.IOException;
 import java.util.Iterator;
 
 /**
  * @author mh
  * @since 03.04.15
  */
-public class MultiFileParallelImporter {
+public class MultiFileParallelImporter2 {
     public static final int MEGA_BYTE = 1024 * 1024;
     private final File store;
 
-    public MultiFileParallelImporter(File store) {
+    public MultiFileParallelImporter2(File store) {
         this.store = store;
     }
 
 
-    public void run(final File[] files, final IdMapper idMapper, final int badRelsTolerance, final Generator generator) throws IOException {
+    public void run(final File[] files, final IdMapper idMapper, final int badRelsTolerance, final Generator2 generator) throws IOException {
         ParallelBatchImporter importer = new ParallelBatchImporter(store, createConfiguration(), createLogging(), createExecutionMonitors());
         importer.doImport(new Input() {
             public InputIterable<InputNode> nodes() {
-                final InputFileIterator nodes = new InputFileIterator(files,true, generator);
+                final InputFileIteratorSeeker nodes = new InputFileIteratorSeeker(files,true, generator);
                 return new InputIterable<InputNode>() {
                     public InputIterator<InputNode> iterator() {
                         return new InputIterator<InputNode>() {
@@ -57,7 +58,7 @@ public class MultiFileParallelImporter {
 
             @Override
             public InputIterable<InputRelationship> relationships() {
-                final InputFileIterator rels = new InputFileIterator(files,false, generator);
+                final InputFileIteratorSeeker rels = new InputFileIteratorSeeker(files,false, generator);
                 return new InputIterable<InputRelationship>() {
                     public InputIterator<InputRelationship> iterator() {
                         return new InputIterator<InputRelationship>() {
